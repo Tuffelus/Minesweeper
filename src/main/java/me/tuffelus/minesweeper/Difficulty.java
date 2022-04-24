@@ -1,9 +1,9 @@
 package me.tuffelus.minesweeper;
 
 public enum Difficulty {
-    EASY(81, 9, 10),
-    HARD(256, 16, 40),
-    EXTREME(480, 30, 99);
+    EASY(9, 9, 10),
+    HARD(16, 16, 40),
+    EXTREME(16, 30, 99);
 
     private final int width;
     private final int height;

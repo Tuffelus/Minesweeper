@@ -17,6 +17,7 @@ public class Tile extends JLabel {
 
     public void setTileState(TileState tileState) {
         this.tileState = tileState;
+        setImage();
     }
 
     public int getX() {

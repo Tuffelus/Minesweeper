@@ -6,30 +6,24 @@ import java.util.List;
 import java.util.Random;
 
 public class Game {
-
-
-    static Difficulty difficulty;
+    static Difficulty difficulty = Difficulty.EASY;
 
     public Game(Difficulty difficulty){
         Game.difficulty = difficulty;
     }
 
     public static void start(){
+        System.out.println(difficulty);
         List<Tile> tiles = new ArrayList<>();
         fillListWithEmptyTiles(tiles);
         randomiseBombs(tiles, difficulty.getBombsAmount());
-        try{
-            Board board = new Board(tiles);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        Board board = new Board(tiles);
     }
 
     public static void fillListWithEmptyTiles(List<Tile> tiles){
         for(int y = 0; y < difficulty.getHeight(); y++){
             for(int x = 0; x < difficulty.getWidth(); x++){
-                tiles.add(new Tile(x,y, TileState.EMPTY));
+                tiles.add(new Tile(x*16,y*16, TileState.EMPTY));
             }
         }
     }
@@ -39,7 +33,7 @@ public class Game {
             return -1;
         }
         Random random = new Random();
-        int randomNumber = random.nextInt(tiles.size()+1);
+        int randomNumber = random.nextInt(tiles.size());
 
         if(tiles.get(randomNumber).getTileState() != TileState.BOMB){
             tiles.get(randomNumber).setTileState(TileState.BOMB);
