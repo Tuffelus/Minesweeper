@@ -7,17 +7,16 @@ import java.util.Objects;
 
 public class Board extends JPanel{
     public Board(List<Tile> tiles) {
-        System.out.println("JPanel");
         JFrame jFrame = new JFrame("Minesweeper");
 
-        //jFrame.setResizable(false);
+        jFrame.setResizable(true);
 
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jFrame.setSize(160, 183);
         this.setVisible(true);
 
         for (Tile tile : tiles) {
-            this.add(tile);
+            jFrame.add(tile);
         }
         jFrame.add(this);
         jFrame.setVisible(true);

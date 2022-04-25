@@ -21,9 +21,11 @@ public class Game {
     }
 
     public static void fillListWithEmptyTiles(List<Tile> tiles){
+        int i = 0;
         for(int y = 0; y < difficulty.getHeight(); y++){
             for(int x = 0; x < difficulty.getWidth(); x++){
                 tiles.add(new Tile(x*16,y*16, TileState.EMPTY));
+                System.out.println(i++);
             }
         }
     }

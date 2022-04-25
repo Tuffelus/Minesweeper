@@ -2,14 +2,13 @@ package me.tuffelus.minesweeper;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Objects;
 
 public class Tile extends JButton {
     final int x;
     final int y;
     TileState tileState;
     boolean revealed = false;
-
-    final static String IMAGE_SOURCE_FOLDER = "D:\\!Dateien\\Programieren\\Java\\Minesweeper\\src\\main\\resources\\";
 
     public Tile(int x, int y, TileState tileState) {
         this.x = x;
@@ -18,15 +17,15 @@ public class Tile extends JButton {
         this.setBounds(x,y,16,16);
         this.setBorder(BorderFactory.createEmptyBorder());
         this.setBorderPainted(false);
-        //this.setFocusPainted(false);
-        //this.setContentAreaFilled(false);
-/*
+        this.setFocusPainted(false);
+        this.setContentAreaFilled(false);
+
         this.addActionListener(e -> {
             clicked();
             System.out.println("Clicked at " + this.x + " " + this.y);
         });
 
- */
+
         setImage();
     }
 
@@ -34,13 +33,13 @@ public class Tile extends JButton {
     public void setImage(){
         ImageIcon image;
         if(!revealed){
-            image = new ImageIcon(IMAGE_SOURCE_FOLDER + "cellup.png");
+            image = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("cellup.png")));
         }
         else{
             switch (tileState){
-                case BOMB -> image = new ImageIcon(IMAGE_SOURCE_FOLDER + "cellmine.png");
-                case EMPTY -> image = new ImageIcon(IMAGE_SOURCE_FOLDER + "celldown.png");
-                default -> image = new ImageIcon(IMAGE_SOURCE_FOLDER + "cellup.png");
+                case BOMB -> image = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("cellmine.png")));
+                case EMPTY -> image = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("celldown.png")));
+                default -> image = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("cellup.png")));
             }
         }
 
@@ -68,8 +67,5 @@ public class Tile extends JButton {
     public TileState getTileState() {
         return tileState;
     }
-
-
-
 
 }
