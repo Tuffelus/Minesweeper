@@ -3,10 +3,10 @@ package me.tuffelus.minesweeper;
 import javax.swing.*;
 import java.awt.*;
 
-public class Game extends JFrame {
+public class Minesweeper extends JFrame {
     private JLabel status;
 
-    public Game(){
+    public Minesweeper(){
         status = new JLabel("");
         add(status, BorderLayout.SOUTH);
         add(new Board(status));
@@ -18,8 +18,8 @@ public class Game extends JFrame {
     }
 
 
-    public static void main(String[] args) {
-        Game minesweeper = new Game();
+    public static void main(String[] args){
+        Minesweeper minesweeper = new Minesweeper();
         minesweeper.setVisible(true);
     }
 }

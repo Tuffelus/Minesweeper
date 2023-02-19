@@ -5,328 +5,234 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Random;
+import java.util.function.Consumer;
 
 public class Board extends JPanel {
-    //image config
     private static final int AMOUNT_IMAGES = 31;
-    private static final int IMAGE_SIZE = 16;    //in pixels
+    private static final int IMAGE_PIXELS = 16;
 
-    //difficulty config
-    private static Difficulty difficulty = Difficulty.HARD;
+    private static final Difficulty difficulty = Difficulty.HARD;
     private static final int BOMB_AMOUNT = difficulty.getBombsAmount();
     private static final int ROWS = difficulty.getRows();
     private static final int COLUMNS = difficulty.getColumns();
 
-    //cell types
-    private static final int COVER = 10;
-    private static final int BOMB = 9;
-    private static final int COVERED_BOMB = COVER + BOMB;
     private static final int FLAG_VALUE = 10;
-    private static final int FLAG_IMAGE = 11;
-    private static final int FALSE_FLAG = 12;
-    private static final int EMPTY_CELL = 0;
-    private static final int COVERED_EMPTY = COVER + EMPTY_CELL;
-    /*
-    Lookup table:
-        Empty:              0
-        Numbers:            1-8
-        Bomb:               9
-        Covered Empty:      10
-        Covered Number:     11-18
-        Covered Bomb:       19
-        Flag:               20-29
-    */
 
-
-    private static final Dimension BOARD_SIZE = new Dimension(COLUMNS*IMAGE_SIZE+1, ROWS*IMAGE_SIZE+1);
+    private static final Dimension BOARD_SIZE = new Dimension(COLUMNS * IMAGE_PIXELS + 1, ROWS * IMAGE_PIXELS + 1);
 
     private static boolean inGame;
     private static int minesLeft;
     private static final Image[] img = new Image[AMOUNT_IMAGES];
     private static final int CELL_AMOUNT = ROWS * COLUMNS;
-    private static int CellsFlipped = 0;
+    private static int CellsRevealed;
     private static final int[] cells = new int[CELL_AMOUNT];
 
     private static JLabel status;
 
-    public Board (JLabel status){
+    public Board(JLabel status) {
         Board.status = status;
 
         setPreferredSize(BOARD_SIZE);
 
-        for (int i = 0;i < AMOUNT_IMAGES; i++){
+        for (int i = 0; i < AMOUNT_IMAGES; i++) {
             String path = "src/main/resources/" + i + ".png";
             img[i] = (new ImageIcon(path)).getImage();
         }
 
-        addMouseListener(new MinesAdapter());
+        addMouseListener(new MinesAdapter(this));
         newGame();
     }
 
-    private void newGame(){
+    private void newGame() {
         inGame = true;
 
-        CellsFlipped = 0;
+        initializeCells();
+        populateRandomBombs();
 
-        for(int i = 0; i < CELL_AMOUNT; i++){
-            cells[i] = COVER;
+        status.setText(Integer.toString(minesLeft));
+    }
+
+    public void initializeCells() {
+        CellsRevealed = 0;
+        for (int i = 0; i < CELL_AMOUNT; i++) {
+            cells[i] = TileType.COVER.getIndex();
         }
+    }
 
-        Random random = new Random();
-        int cellToChange;
+    public void populateRandomBombs() {
         int count = 0;
-        while (count < BOMB_AMOUNT){
-            int pos = random.nextInt(CELL_AMOUNT-1);
-            if(cells[pos] != COVERED_BOMB){
-                cells[pos] = COVERED_BOMB;
+        Random random = new Random();
+        while (count < BOMB_AMOUNT) {
+            int pos = random.nextInt(CELL_AMOUNT - 1);
+            if (cells[pos] != TileType.COVERED_BOMB.getIndex()) {
 
-                int currentColumn = pos % COLUMNS;
+                cells[pos] = TileType.COVERED_BOMB.getIndex();
+                manipulateAdjacentTiles(pos, this::incrementIfIsNumberTileAndInBounds);
 
-                if(currentColumn > 0 ){                     //Only checks to the left if there are cells
-                    cellToChange = pos - 1 - COLUMNS;
-                    checkCellForBombToZero(cellToChange);
-
-                    cellToChange = pos - 1;
-                    checkCellForBombToZero(cellToChange);
-
-                    cellToChange = pos - 1 + COLUMNS;
-                    checkCellForBombToTop(cellToChange);
-                }
-                                                            //left and right
-                cellToChange = pos - COLUMNS;
-                checkCellForBombToZero(cellToChange);
-
-                cellToChange = pos + COLUMNS;
-                checkCellForBombToTop(cellToChange);
-
-                if(currentColumn < (COLUMNS - 1)){          //only checks to the right if there are cells
-                    cellToChange = pos + 1 - COLUMNS;
-                    checkCellForBombToZero(cellToChange);
-
-                    cellToChange = pos +1;
-                    checkCellForBombToTop(cellToChange);
-
-                    cellToChange = pos + 1 + COLUMNS;
-                    checkCellForBombToTop(cellToChange);
-                }
                 minesLeft = BOMB_AMOUNT;
-                status.setText(Integer.toString(minesLeft));
                 count++;
             }
         }
     }
 
-    public void checkCellForBombToZero(int cellToChange){   //checks if the cell has a negative Index
-        if(cellToChange >= 0){
-            checkCellForBomb(cellToChange);
-        }
-    }
-    public void checkCellForBombToTop(int cellToChange){    //checks if the cell has a higher than possible Index
-        if(cellToChange < CELL_AMOUNT){
-            checkCellForBomb(cellToChange);
-        }
-    }
-    public void checkCellForBomb(int cellToChange){
-        if(cells[cellToChange] != COVERED_BOMB){
-            cells[cellToChange]++;
-        }
-    }
-
-    public void revealAdjacent(int pos){
+    public void manipulateAdjacentTiles(int pos, Consumer<Integer> consumer) {
         int currentColumn = pos % COLUMNS;
-        int cellToReveal;
+        for (int col = -1; col <= 1; col++) {
+            for (int row = -COLUMNS; row <= COLUMNS; row += COLUMNS) {
 
-        if(currentColumn > 0 ){
-            cellToReveal = pos - 1 - COLUMNS;
-            checkIfEmptyLeft(cellToReveal);
-
-            cellToReveal = pos - 1;
-            checkIfEmptyLeft(cellToReveal);
-
-            cellToReveal = pos - 1 + COLUMNS;
-            checkIfEmptyRight(cellToReveal);
-        }
-
-        cellToReveal = pos - COLUMNS;
-        checkIfEmptyLeft(cellToReveal);
-
-        cellToReveal = pos + COLUMNS;
-        if(cellToReveal < CELL_AMOUNT && cells[cellToReveal] > 9){
-            revealCell(cellToReveal);
-        }
-
-        if(currentColumn < (COLUMNS - 1)){
-            cellToReveal = pos + 1 - COLUMNS;
-            checkIfEmptyLeft(cellToReveal);
-
-            cellToReveal = pos +1;
-            checkIfEmptyRight(cellToReveal);
-
-            cellToReveal = pos + 1 + COLUMNS;
-            checkIfEmptyRight(cellToReveal);
-        }
-        status.setText(Integer.toString(minesLeft));
-    }
-
-    public void checkIfEmptyLeft(int cellToCheck){
-        if(cellToCheck >= 0 && cells[cellToCheck] > 9){
-            revealCell(cellToCheck);
+                int cellToManipulate = pos + col + row;
+                if (currentColumn + col >= 0 && currentColumn + col <= (COLUMNS - 1)) {
+                    if (cellToManipulate != pos) {
+                        consumer.accept(cellToManipulate);
+                    }
+                }
+            }
         }
     }
-    public void checkIfEmptyRight(int cellToCheck){
-        if(cellToCheck < CELL_AMOUNT && cells[cellToCheck] > 9){
+
+    public void incrementIfIsNumberTileAndInBounds(int cellToChange) {
+        if (cellToChange >= 0 && cellToChange < CELL_AMOUNT) {
+            if (cells[cellToChange] != TileType.COVERED_BOMB.getIndex()) {
+                cells[cellToChange]++;
+            }
+        }
+    }
+
+    public void checkIfEmpty(int cellToCheck) {
+        if (cellToCheck < CELL_AMOUNT && cellToCheck >= 0 && cells[cellToCheck] > 9) {
             revealCell(cellToCheck);
         }
     }
 
-    public void revealCell(int cellToReveal){
-        if(cells[cellToReveal] >= 10 && cells[cellToReveal] <= 18){
-            cells[cellToReveal] -= COVER;
-            CellsFlipped++;
-            System.out.println(CellsFlipped);
-        }else if(cells[cellToReveal] == 19){
-            inGame = false;
+    public void revealCell(int cellToReveal) {
+        if (cells[cellToReveal] >= 10 && cells[cellToReveal] <= 18) {
+            cells[cellToReveal] -= TileType.COVER.getIndex();
+            CellsRevealed++;
+            System.out.println(CellsRevealed);
+        } else if (cells[cellToReveal] == 19) {
             status.setText("You Lost! Game Over XD");
+            inGame = false;
         }
 
-        if(cells[cellToReveal] == EMPTY_CELL){
-            revealAdjacent(cellToReveal);
+        if (cells[cellToReveal] == TileType.EMPTY.getIndex()) {
+            manipulateAdjacentTiles(cellToReveal, this::checkIfEmpty);
         }
     }
 
-    public int checkIfFlagLeft(int cellToCheck){
-        if(cellToCheck >= 0 && cells[cellToCheck] > 19  && cells[cellToCheck] <= 29){ //Range of Flag Index
-            return 1;
-        }
-        return 0;
-    }
-    public int checkIfFlagRight(int cellToCheck){
-        if(cellToCheck < CELL_AMOUNT && cells[cellToCheck] > 19  && cells[cellToCheck] <= 29){ //Range of Flag Index
-            return 1;
-        }
-        return 0;
+    public boolean checkForFlag(int cellToCheck) {
+        return cellToCheck < CELL_AMOUNT && cellToCheck >= 0 && cells[cellToCheck] > 19 && cells[cellToCheck] <= 29;
     }
 
-    public int amountFlagsAdjacent(int pos){
+    public int amountFlagsAdjacent(int pos) {
         int count = 0;
         int currentColumn = pos % COLUMNS;
-        int cellToCheck;
+        for (int col = -1; col <= 1; col++) {
+            for (int row = -COLUMNS; row <= COLUMNS; row += COLUMNS) {
 
-        if(currentColumn > 0 ){
-            cellToCheck = pos - 1 - COLUMNS;
-            count += checkIfFlagLeft(cellToCheck);
-
-            cellToCheck = pos - 1;
-            count += checkIfFlagLeft(cellToCheck);
-
-            cellToCheck = pos - 1 + COLUMNS;
-            count += checkIfFlagRight(cellToCheck);
+                int cellToManipulate = pos + col + row;
+                if (currentColumn + col >= 0 && currentColumn + col <= (COLUMNS - 1)) {
+                    if (cellToManipulate != pos) {
+                        if (checkForFlag(cellToManipulate)) {
+                            count++;
+                        }
+                    }
+                }
+            }
         }
-
-        cellToCheck = pos - COLUMNS;
-        count += checkIfFlagLeft(cellToCheck);
-
-        cellToCheck = pos + COLUMNS;
-        count += checkIfFlagRight(cellToCheck);
-
-        if(currentColumn < (COLUMNS - 1)){
-            cellToCheck = pos + 1 - COLUMNS;
-            count += checkIfFlagLeft(cellToCheck);
-
-            cellToCheck = pos +1;
-            count += checkIfFlagRight(cellToCheck);
-
-            cellToCheck = pos + 1 + COLUMNS;
-            count += checkIfFlagRight(cellToCheck);
-        }
-
         return count;
     }
 
     @Override
-    public void paintComponent(Graphics g){
-        if(CellsFlipped + BOMB_AMOUNT == CELL_AMOUNT){
+    public void paintComponent(Graphics g) {
+        if (CellsRevealed + BOMB_AMOUNT == CELL_AMOUNT) {
             status.setText("You won! :D");
             inGame = false;
         }
-        for (int y = 0; y < ROWS; y++){
-            for(int x = 0; x < COLUMNS; x++){
 
-                int cell = cells[(y*COLUMNS) + x];
-                if(!inGame && (cell == COVERED_BOMB)){
-                    cell = BOMB;
-                }
-                if(cell >= 10 && cell < 20){                //Range of uncovered cells
-                    cell = COVER;
-                }
-                if(inGame && cell >= 20 && cell < 30){      //Range of flag Index with Bombs
-                    cell = FLAG_IMAGE;
-                }
-                if(!inGame && (cell >= 20 && cell <= 28)){  //Range of Flag Index with NO Bombs
-                    cell = FALSE_FLAG;
-                }
-                g.drawImage(img[cell], x * IMAGE_SIZE, y * IMAGE_SIZE, this);
+        for (int y = 0; y < ROWS; y++) {
+            for (int x = 0; x < COLUMNS; x++) {
+                Image image = img[getImageIndexOfCell(x, y)];
+                g.drawImage(image, x * IMAGE_PIXELS, y * IMAGE_PIXELS, this);
             }
         }
     }
 
-    private class MinesAdapter extends MouseAdapter{
-        @Override
-        public void mousePressed(MouseEvent e){
-            if(!inGame){
-                newGame();
-                repaint();
-                return;
+    public int getImageIndexOfCell(int x, int y) {
+        int cell = cells[(y * COLUMNS) + x];
+        if (!inGame && (cell == TileType.COVERED_BOMB.getIndex())) {
+            cell = TileType.BOMB.getImageIndex();
+        }
+        if (cell >= TileType.COVER.getFirstIndex() && cell <= TileType.COVER.getLastIndex()) {
+            cell = TileType.COVER.getImageIndex();
+        }
+        if (inGame && cell >= TileType.FLAG.getFirstIndex() && cell <= TileType.FLAG.getLastIndex()) {
+            cell = TileType.FLAG.getImageIndex();
+        }
+        if (!inGame && (cell >= TileType.FALSE_FLAG.getFirstIndex() && cell <= TileType.FALSE_FLAG.getLastIndex())) {
+            cell = TileType.FALSE_FLAG.getImageIndex();
+        }
+        return cell;
+    }
+
+
+    public void leftClick(int xOnBoard, int yOnBoard){
+
+        int cursorCell = determineClickedCell(xOnBoard, yOnBoard);
+
+        if(!inGame){
+            newGame();
+        }
+        if(cells[cursorCell] >= TileType.NUMBERS.getFirstIndex() && cells[cursorCell] < TileType.NUMBERS.getLastIndex()){
+            if (cells[cursorCell] == amountFlagsAdjacent(cursorCell)){
+                manipulateAdjacentTiles(cursorCell, this::checkIfEmpty);
+                status.setText(Integer.toString(minesLeft));
             }
+        }
+        revealCell(cursorCell);
+        repaint();
+    }
 
-            int x = e.getX();
-            int y = e.getY();
+    public void rightClick(int xOnBoard, int yOnBoard){
 
-            int cursorColumn = x/IMAGE_SIZE;
-            int cursorRow = y/IMAGE_SIZE;
-
-            int cursorCell = ROWS * cursorRow + cursorColumn;
-
-            if(e.getButton() == MouseEvent.BUTTON1){
-                if(cells[cursorCell] == COVERED_BOMB){
-                    inGame = false;
-                    status.setText("You Lost! Game Over XD");
-                }
-                else if (cells[cursorCell] == COVERED_EMPTY){
-                    cells[cursorCell] -= COVER;
-                    CellsFlipped++;
-                    System.out.println(CellsFlipped);
-                    revealAdjacent(cursorCell);
-                }
-                else if (cells[cursorCell] > 9 && cells[cursorCell] < 20) { //Range of covers
-                    cells[cursorCell] -= COVER;
-                    CellsFlipped++;
-                    System.out.println(CellsFlipped);
-                }
-                else if (cells[cursorCell] > 0 && cells[cursorCell] < 9){ //Range of uncovered numbers
-                    if (cells[cursorCell] == amountFlagsAdjacent(cursorCell)){
-                        revealAdjacent(cursorCell);
-                    }
-                }
-            }
-            else{
-                if((cells[cursorCell]) > 19){               //is already a flag
-                    cells[cursorCell] -= FLAG_VALUE;
-                    minesLeft++;
-                    status.setText(Integer.toString(minesLeft));
-                }
-                else{
-                    if(minesLeft > 0 && cells[cursorCell] >= COVER){
-                        cells[cursorCell] += FLAG_VALUE;
-                        minesLeft--;
-                        status.setText(Integer.toString(minesLeft));
-                    }
-                    else if(cells[cursorCell] >= COVER){
-                        status.setText("No flags left");
-                    }
-                }
-            }
+        if(!inGame){
+            newGame();
             repaint();
+            return;
+        }
+
+        int cursorCell = determineClickedCell(xOnBoard, yOnBoard);
+
+        if((cells[cursorCell]) > TileType.FLAG.getFirstIndex()){
+            takeFlag(cursorCell);
+        }
+        else{
+            placeFlag(cursorCell);
+        }
+        repaint();
+    }
+
+    public int determineClickedCell(int xOnBoard, int yOnBoard){
+
+        int cursorColumn = xOnBoard/IMAGE_PIXELS;
+        int cursorRow = yOnBoard/IMAGE_PIXELS;
+
+        return ROWS * cursorRow + cursorColumn;
+    }
+
+    public void takeFlag(int cursorCell){
+        cells[cursorCell] -= FLAG_VALUE;
+        minesLeft++;
+        status.setText(Integer.toString(minesLeft));
+    }
+
+    public void placeFlag(int cursorCell){
+        if(minesLeft > 0 && cells[cursorCell] >= TileType.COVER.getIndex()){
+            cells[cursorCell] += FLAG_VALUE;
+            minesLeft--;
+            status.setText(Integer.toString(minesLeft));
+        }
+        else if(cells[cursorCell] >= TileType.COVER.getIndex()){
+            status.setText("No flags left");
         }
     }
 }
